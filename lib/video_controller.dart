@@ -5,17 +5,17 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
 class VideoController extends ValueNotifier<VideoPlayerValue> {
-  MethodChannel _channel;
+  VideoController() : super(VideoPlayerValue(duration: Duration()));
 
-  int id;
+  late MethodChannel _channel;
+
+  late int id;
 
   bool _isDisposed = false;
-  Timer _timer;
+  Timer? _timer;
 
-  StreamSubscription<dynamic> _eventSubscription;
-  _VideoAppLifeCycleObserver _lifeCycleObserver;
-
-  VideoController() : super(VideoPlayerValue(duration: Duration()));
+  late StreamSubscription<dynamic> _eventSubscription;
+  late _VideoAppLifeCycleObserver _lifeCycleObserver;
 
   init(int id) {
     this.id = id;
@@ -26,8 +26,9 @@ class VideoController extends ValueNotifier<VideoPlayerValue> {
     if (_isDisposed) {
       return;
     }
-    if (position > value.duration) {
-      position = value.duration;
+
+    if (value.duration != null && position > value.duration!) {
+      position = value.duration!;
     } else if (position < const Duration()) {
       position = const Duration();
     }
@@ -118,9 +119,9 @@ class VideoController extends ValueNotifier<VideoPlayerValue> {
   /// The position in the current video.
   Future<Duration> get position async {
     if (_isDisposed) {
-      return null;
+      return Duration.zero;
     }
-    int position = await _channel.invokeMethod("getPosition");
+    int? position = await _channel.invokeMethod("getPosition");
     return Duration(milliseconds: position ?? 0);
   }
 
@@ -177,22 +178,19 @@ class VideoController extends ValueNotifier<VideoPlayerValue> {
     }
 
     void errorListener(Object obj) {
-      final PlatformException e = obj;
+      final PlatformException e = obj as PlatformException;
       _timer?.cancel();
-      value = VideoPlayerValue.erroneous(e.message);
+      value = VideoPlayerValue.erroneous(e.message ?? '');
     }
 
-    _eventSubscription = EventChannel('drmvideo_events$id')
-        .receiveBroadcastStream()
-        .map((dynamic event) {
+    _eventSubscription = EventChannel('drmvideo_events$id').receiveBroadcastStream().map((dynamic event) {
       final Map<dynamic, dynamic> map = event;
       switch (map['event']) {
         case 'initialized':
           return VideoEvent(
             eventType: VideoEventType.initialized,
             duration: Duration(milliseconds: map['duration']),
-            size: Size(map['width']?.toDouble() ?? 0.0,
-                map['height']?.toDouble() ?? 0.0),
+            size: Size(map['width']?.toDouble() ?? 0.0, map['height']?.toDouble() ?? 0.0),
           );
         case 'completed':
           return VideoEvent(
@@ -228,7 +226,7 @@ class VideoController extends ValueNotifier<VideoPlayerValue> {
     if (!_isDisposed) {
       _isDisposed = true;
       _timer?.cancel();
-      await _eventSubscription?.cancel();
+      await _eventSubscription.cancel();
       await _channel.invokeMethod("dispose");
     }
     _lifeCycleObserver.dispose();
@@ -275,7 +273,7 @@ class VideoPlayerValue {
   /// Constructs a video with the given values. Only [duration] is required. The
   /// rest will initialize with default values when unset.
   VideoPlayerValue({
-    @required this.duration,
+    this.duration,
     this.size,
     this.position = const Duration(),
     this.buffered = const <DurationRange>[],
@@ -292,13 +290,12 @@ class VideoPlayerValue {
 
   /// Returns an instance with a `null` [Duration] and the given
   /// [errorDescription].
-  VideoPlayerValue.erroneous(String errorDescription)
-      : this(duration: null, errorDescription: errorDescription);
+  VideoPlayerValue.erroneous(String errorDescription) : this(duration: null, errorDescription: errorDescription);
 
   /// The total duration of the video.
   ///
   /// Is null when [initialized] is false.
-  final Duration duration;
+  final Duration? duration;
 
   /// The current playback position.
   final Duration position;
@@ -324,12 +321,12 @@ class VideoPlayerValue {
   /// A description of the error if present.
   ///
   /// If [hasError] is false this is [null].
-  final String errorDescription;
+  final String? errorDescription;
 
   /// The [size] of the currently loaded video.
   ///
   /// Is null when [initialized] is false.
-  final Size size;
+  final Size? size;
 
   /// Indicates whether or not the video has been loaded and is ready to play.
   bool get initialized => duration != null;
@@ -341,10 +338,11 @@ class VideoPlayerValue {
   /// Returns [size.width] / [size.height] when size is non-null, or `16/9.` when
   /// size is null or the aspect ratio would be less than or equal to 0.0.
   double get aspectRatio {
-    if (size == null || size.width == 0 || size.height == 0) {
+    if (size == null || size!.width == 0 || size!.height == 0) {
       return 16 / 9;
     }
-    final double aspectRatio = size.width / size.height;
+    final double aspectRatio = size!.width / size!.height;
+
     if (aspectRatio <= 0) {
       return 16 / 9;
     }
@@ -354,16 +352,16 @@ class VideoPlayerValue {
   /// Returns a new instance that has the same values as this current instance,
   /// except for any overrides passed in as arguments to [copyWidth].
   VideoPlayerValue copyWith({
-    Duration duration,
-    Size size,
-    Duration position,
-    List<DurationRange> buffered,
-    bool isPlaying,
-    bool isLooping,
-    bool isBuffering,
-    double volume,
-    double playbackSpeed,
-    String errorDescription,
+    Duration? duration,
+    Size? size,
+    Duration? position,
+    List<DurationRange>? buffered,
+    bool? isPlaying,
+    bool? isLooping,
+    bool? isBuffering,
+    double? volume,
+    double? playbackSpeed,
+    String? errorDescription,
   }) {
     return VideoPlayerValue(
       duration: duration ?? this.duration,
@@ -469,10 +467,7 @@ class DurationRange {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is DurationRange &&
-          runtimeType == other.runtimeType &&
-          start == other.start &&
-          end == other.end;
+      other is DurationRange && runtimeType == other.runtimeType && start == other.start && end == other.end;
 
   @override
   int get hashCode => start.hashCode ^ end.hashCode;
@@ -487,7 +482,7 @@ class VideoEvent {
   /// Depending on the [eventType], the [duration], [size] and [buffered]
   /// arguments can be null.
   VideoEvent({
-    @required this.eventType,
+    required this.eventType,
     this.duration,
     this.size,
     this.buffered,
@@ -499,17 +494,17 @@ class VideoEvent {
   /// Duration of the video.
   ///
   /// Only used if [eventType] is [VideoEventType.initialized].
-  final Duration duration;
+  final Duration? duration;
 
   /// Size of the video.
   ///
   /// Only used if [eventType] is [VideoEventType.initialized].
-  final Size size;
+  final Size? size;
 
   /// Buffered parts of the video.
   ///
   /// Only used if [eventType] is [VideoEventType.bufferingUpdate].
-  final List<DurationRange> buffered;
+  final List<DurationRange>? buffered;
 
   @override
   bool operator ==(Object other) {
@@ -523,9 +518,5 @@ class VideoEvent {
   }
 
   @override
-  int get hashCode =>
-      eventType.hashCode ^
-      duration.hashCode ^
-      size.hashCode ^
-      buffered.hashCode;
+  int get hashCode => eventType.hashCode ^ duration.hashCode ^ size.hashCode ^ buffered.hashCode;
 }

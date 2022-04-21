@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:drm_video/video_controller.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
@@ -22,12 +21,12 @@ class DrmVideo {
 
 class DrmVideoPlayer extends StatefulWidget {
   DrmVideoPlayer({
-    @required this.videoUrl,
+    required this.videoUrl,
     this.drmLicenseUrl = "",
-    this.onVideoControls,
+    required this.onVideoControls,
     this.formatHint = "",
     this.autoPlay = true,
-  }) : assert(videoUrl != null);
+  });
 
   final String videoUrl;
   final String drmLicenseUrl;
@@ -70,10 +69,9 @@ class _DrmVideoPlayerState extends State<DrmVideoPlayer> {
 
     return PlatformViewLink(
       viewType: viewType,
-      surfaceFactory:
-          (BuildContext context, PlatformViewController controller) {
+      surfaceFactory: (BuildContext context, PlatformViewController controller) {
         return AndroidViewSurface(
-          controller: controller,
+          controller: controller as AndroidViewController,
           gestureRecognizers: const <Factory<OneSequenceGestureRecognizer>>{},
           hitTestBehavior: PlatformViewHitTestBehavior.opaque,
         );
@@ -144,8 +142,8 @@ class VideoProgressColors {
 
 class _VideoScrubber extends StatefulWidget {
   _VideoScrubber({
-    @required this.child,
-    @required this.controller,
+    required this.child,
+    required this.controller,
   });
 
   final Widget child;
@@ -163,10 +161,10 @@ class _VideoScrubberState extends State<_VideoScrubber> {
   @override
   Widget build(BuildContext context) {
     void seekToRelativePosition(Offset globalPosition) {
-      final RenderBox box = context.findRenderObject();
+      final RenderBox box = context.findRenderObject() as RenderBox;
       final Offset tapPos = box.globalToLocal(globalPosition);
       final double relative = tapPos.dx / box.size.width;
-      final Duration position = controller.value.duration * relative;
+      final Duration position = (controller.value.duration ?? Duration.zero) * relative;
       controller.seekTo(position);
     }
 
@@ -219,10 +217,10 @@ class VideoProgressIndicator extends StatefulWidget {
   /// to `top: 5.0`.
   VideoProgressIndicator(
     this.controller, {
-    VideoProgressColors colors,
-    this.allowScrubbing,
+    required VideoProgressColors colors,
+    required this.allowScrubbing,
     this.padding = const EdgeInsets.only(top: 5.0),
-  }) : colors = colors ?? VideoProgressColors();
+  }) : colors = colors;
 
   /// The [VideoPlayerController] that actually associates a video with this
   /// widget.
@@ -250,16 +248,12 @@ class VideoProgressIndicator extends StatefulWidget {
 }
 
 class _VideoProgressIndicatorState extends State<VideoProgressIndicator> {
-  _VideoProgressIndicatorState() {
-    listener = () {
-      if (!mounted) {
-        return;
-      }
-      setState(() {});
-    };
-  }
-
-  VoidCallback listener;
+  late VoidCallback listener = () {
+    if (!mounted) {
+      return;
+    }
+    setState(() {});
+  };
 
   VideoController get controller => widget.controller;
 
@@ -281,7 +275,7 @@ class _VideoProgressIndicatorState extends State<VideoProgressIndicator> {
   Widget build(BuildContext context) {
     Widget progressIndicator;
     if (controller.value.initialized) {
-      final int duration = controller.value.duration.inMilliseconds;
+      final int duration = controller.value.duration?.inMilliseconds ?? 0;
       final int position = controller.value.position.inMilliseconds;
 
       int maxBuffering = 0;
@@ -296,8 +290,7 @@ class _VideoProgressIndicatorState extends State<VideoProgressIndicator> {
         fit: StackFit.passthrough,
         children: <Widget>[
           LinearProgressIndicator(
-            value:
-                (maxBuffering / duration).isNaN ? 0 : maxBuffering / duration,
+            value: (maxBuffering / duration).isNaN ? 0 : maxBuffering / duration,
             valueColor: AlwaysStoppedAnimation<Color>(colors.bufferedColor),
             backgroundColor: colors.backgroundColor,
           ),
