@@ -8,9 +8,9 @@ import io.flutter.plugin.platform.PlatformViewFactory
 
 
 internal class DrmVideoFactory(private val messenger: BinaryMessenger) : PlatformViewFactory(StandardMessageCodec.INSTANCE) {
-    override fun create(context: Context, id: Int, args: Any?): PlatformView {
+    override fun create(context: Context?, viewId: Int, args: Any?): PlatformView {
 
         val params = args as Map<String, Any>
-        return DrmVideoPlayer(context, messenger, id, params)
+        return DrmVideoPlayer(context!!, messenger, viewId, params)
     }
 }
