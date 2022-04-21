@@ -52,17 +52,18 @@ class _MyAppState extends State<MyApp> {
                         },
                       ),
                     ),
-                    if (_videoController != null)
-                      _ControlsOverlay(controller: _videoController),
+                    if (_videoController != null) _ControlsOverlay(controller: _videoController),
                   ],
                 ),
               ),
               if (_videoController != null)
-                VideoProgressIndicator(_videoController, allowScrubbing: true),
-              if (_videoController != null)
-                Text("text ${_videoController.value.position}"),
-              if (_videoController != null)
-                Text("text ${_videoController.value.duration}"),
+                VideoProgressIndicator(
+                  _videoController,
+                  allowScrubbing: true,
+                  colors: VideoProgressColors(),
+                ),
+              if (_videoController != null) Text("text ${_videoController.value.position}"),
+              if (_videoController != null) Text("text ${_videoController.value.duration}"),
               Text("text ${_videoController == null}"),
             ],
           ),
@@ -112,9 +113,7 @@ class _ControlsOverlay extends StatelessWidget {
           ),
           GestureDetector(
             onTap: () {
-              controller.value.isPlaying
-                  ? controller.pause()
-                  : controller.play();
+              controller.value.isPlaying ? controller.pause() : controller.play();
             },
           ),
           Align(
