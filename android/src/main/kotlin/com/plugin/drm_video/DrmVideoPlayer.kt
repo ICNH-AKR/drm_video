@@ -4,25 +4,21 @@ import android.content.Context
 import android.net.Uri
 import android.view.LayoutInflater
 import android.view.View
-import com.google.android.exoplayer2.*
 import com.google.android.exoplayer2.Player.REPEAT_MODE_ALL
 import com.google.android.exoplayer2.Player.REPEAT_MODE_OFF
 
 import com.google.android.exoplayer2.C;
-import com.google.android.exoplayer2.ExoPlaybackException;
 import com.google.android.exoplayer2.Format;
 import com.google.android.exoplayer2.MediaItem;
 import com.google.android.exoplayer2.PlaybackParameters;
 import com.google.android.exoplayer2.Player;
-import com.google.android.exoplayer2.Player.EventListener;
 import com.google.android.exoplayer2.SimpleExoPlayer;
-import com.google.android.exoplayer2.audio.AudioAttributes;
 import com.google.android.exoplayer2.source.ProgressiveMediaSource;
 import com.google.android.exoplayer2.source.hls.HlsMediaSource;
 import com.google.android.exoplayer2.source.smoothstreaming.DefaultSsChunkSource;
 import com.google.android.exoplayer2.source.smoothstreaming.SsMediaSource;
 import com.google.android.exoplayer2.drm.DefaultDrmSessionManager
-import com.google.android.exoplayer2.drm.DrmSessionManager
+import com.google.android.exoplayer2.drm.DrmSessionManagerProvider
 import com.google.android.exoplayer2.drm.HttpMediaDrmCallback
 import com.google.android.exoplayer2.source.MediaSource
 import com.google.android.exoplayer2.source.dash.DashMediaSource
@@ -30,9 +26,9 @@ import com.google.android.exoplayer2.source.dash.DefaultDashChunkSource
 import com.google.android.exoplayer2.trackselection.DefaultTrackSelector
 import com.google.android.exoplayer2.ui.StyledPlayerView
 import com.google.android.exoplayer2.upstream.DataSource
+import com.google.android.exoplayer2.upstream.DefaultDataSource
 import com.google.android.exoplayer2.upstream.DefaultDataSourceFactory
 import com.google.android.exoplayer2.upstream.DefaultHttpDataSource
-import com.google.android.exoplayer2.upstream.DefaultHttpDataSourceFactory
 import com.google.android.exoplayer2.util.Util
 import io.flutter.plugin.common.BinaryMessenger
 import io.flutter.plugin.common.EventChannel
@@ -186,13 +182,12 @@ internal class DrmVideoPlayer(
                 trackSelector.buildUponParameters().setMaxVideoSizeSd()
         )
 
-        var drmSessionManager: DrmSessionManager? = null;
+        var drmSessionManager: DrmSessionManagerProvider? = null;
 
 
         if (drmLicenseUrl.isNotEmpty()) {
-            val drmCallback = HttpMediaDrmCallback(drmLicenseUrl, DefaultHttpDataSourceFactory())
-
-            drmSessionManager = DefaultDrmSessionManager.Builder().build(drmCallback)
+            val drmCallback = HttpMediaDrmCallback(drmLicenseUrl, DefaultHttpDataSource.Factory())
+            drmSessionManager = DrmSessionManagerProvider { DefaultDrmSessionManager.Builder().build(drmCallback) }
         }
 
         player = SimpleExoPlayer.Builder(context)
@@ -202,16 +197,16 @@ internal class DrmVideoPlayer(
         val uri: Uri = Uri.parse(drmLicenseUrl);
 
         val dataSourceFactory: DataSource.Factory
+
         dataSourceFactory = if (isHTTP(uri)) {
-            DefaultHttpDataSourceFactory(
-                    "ExoPlayer",
-                    null,
-                    DefaultHttpDataSource.DEFAULT_CONNECT_TIMEOUT_MILLIS,
-                    DefaultHttpDataSource.DEFAULT_READ_TIMEOUT_MILLIS,
-                    true
-            )
+            DefaultHttpDataSource.Factory()
+                .setUserAgent("ExoPlayer")
+                .setConnectTimeoutMs(DefaultHttpDataSource.DEFAULT_CONNECT_TIMEOUT_MILLIS)
+                .setReadTimeoutMs(DefaultHttpDataSource.DEFAULT_READ_TIMEOUT_MILLIS)
+
+
         } else {
-            DefaultDataSourceFactory(context, "ExoPlayer")
+            DefaultDataSource.Factory(context)
         }
 
 
@@ -227,7 +222,8 @@ internal class DrmVideoPlayer(
     }
 
     private fun buildMediaSource(
-            uri: Uri, mediaDataSourceFactory: DataSource.Factory, formatHint: String?, context: Context, drmSessionManager: DrmSessionManager?): MediaSource? {
+            uri: Uri, mediaDataSourceFactory: DataSource.Factory, formatHint: String?, context: Context, drmSessionManager: DrmSessionManagerProvider?):
+            MediaSource? {
         val type: Int = if (formatHint == null || formatHint.isEmpty()) {
             Util.inferContentType(uri.lastPathSegment!!)
         } else {
@@ -243,18 +239,18 @@ internal class DrmVideoPlayer(
             C.TYPE_SS -> SsMediaSource.Factory(
                     DefaultSsChunkSource.Factory(mediaDataSourceFactory),
                     DefaultDataSourceFactory(context, null, mediaDataSourceFactory))
-                    .setDrmSessionManager(drmSessionManager)
+                    .setDrmSessionManagerProvider(drmSessionManager)
                     .createMediaSource(MediaItem.fromUri(uri))
             C.TYPE_DASH -> DashMediaSource.Factory(
                     DefaultDashChunkSource.Factory(mediaDataSourceFactory),
-                    DefaultDataSourceFactory(context, null, mediaDataSourceFactory))
-                    .setDrmSessionManager(drmSessionManager)
+                    DefaultDataSource.Factory(context, mediaDataSourceFactory))
+                    .setDrmSessionManagerProvider(drmSessionManager)
                     .createMediaSource(MediaItem.fromUri(uri))
             C.TYPE_HLS -> HlsMediaSource.Factory(mediaDataSourceFactory)
-                    .setDrmSessionManager(drmSessionManager)
+                    .setDrmSessionManagerProvider(drmSessionManager)
                     .createMediaSource(MediaItem.fromUri(uri))
             C.TYPE_OTHER -> ProgressiveMediaSource.Factory(mediaDataSourceFactory)
-                    .setDrmSessionManager(drmSessionManager)
+                    .setDrmSessionManagerProvider(drmSessionManager)
                     .createMediaSource(MediaItem.fromUri(uri))
             else -> {
                 throw IllegalStateException("Unsupported type: $type")
@@ -285,7 +281,7 @@ internal class DrmVideoPlayer(
                 })
 
         player?.addListener(
-                object : Player.EventListener {
+                object : Player.Listener {
                     override fun onPlaybackStateChanged(playbackState: Int) {
                         if (playbackState == Player.STATE_BUFFERING) {
                             sendBufferingUpdate()
@@ -299,10 +295,6 @@ internal class DrmVideoPlayer(
                             event["event"] = "completed"
                             eventSink.success(event)
                         }
-                    }
-
-                    override fun onPlayerError(error: ExoPlaybackException) {
-                        eventSink.error("VideoError", "Video player had error $error", null)
                     }
                 })
     }
