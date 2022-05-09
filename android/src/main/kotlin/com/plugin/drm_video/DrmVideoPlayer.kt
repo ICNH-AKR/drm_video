@@ -4,25 +4,19 @@ import android.content.Context
 import android.net.Uri
 import android.view.LayoutInflater
 import android.view.View
+import com.google.android.exoplayer2.*
 import com.google.android.exoplayer2.Player.REPEAT_MODE_ALL
 import com.google.android.exoplayer2.Player.REPEAT_MODE_OFF
-
-import com.google.android.exoplayer2.C;
-import com.google.android.exoplayer2.Format;
-import com.google.android.exoplayer2.MediaItem;
-import com.google.android.exoplayer2.PlaybackParameters;
-import com.google.android.exoplayer2.Player;
-import com.google.android.exoplayer2.SimpleExoPlayer;
-import com.google.android.exoplayer2.source.ProgressiveMediaSource;
-import com.google.android.exoplayer2.source.hls.HlsMediaSource;
-import com.google.android.exoplayer2.source.smoothstreaming.DefaultSsChunkSource;
-import com.google.android.exoplayer2.source.smoothstreaming.SsMediaSource;
 import com.google.android.exoplayer2.drm.DefaultDrmSessionManager
 import com.google.android.exoplayer2.drm.DrmSessionManagerProvider
 import com.google.android.exoplayer2.drm.HttpMediaDrmCallback
 import com.google.android.exoplayer2.source.MediaSource
+import com.google.android.exoplayer2.source.ProgressiveMediaSource
 import com.google.android.exoplayer2.source.dash.DashMediaSource
 import com.google.android.exoplayer2.source.dash.DefaultDashChunkSource
+import com.google.android.exoplayer2.source.hls.HlsMediaSource
+import com.google.android.exoplayer2.source.smoothstreaming.DefaultSsChunkSource
+import com.google.android.exoplayer2.source.smoothstreaming.SsMediaSource
 import com.google.android.exoplayer2.trackselection.DefaultTrackSelector
 import com.google.android.exoplayer2.ui.StyledPlayerView
 import com.google.android.exoplayer2.upstream.DataSource
@@ -37,7 +31,7 @@ import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.platform.PlatformView
 import java.util.*
-import kotlin.collections.HashMap
+import kotlin.experimental.and
 
 
 internal class DrmVideoPlayer(
@@ -164,12 +158,49 @@ internal class DrmVideoPlayer(
         var drmLicenseUrl = "";
         var formatHint: String? = null
 
+        var userId: String?= null
+        var assetId: String?= null
+        var sessionId: String?= null
+        var merchant: String? = null
+        var authToken: String?= null
+        var isCastlab = false
+
+        if (params.containsKey("isCastlab")) {
+            isCastlab = params["isCastlab"] as Boolean;
+
+            if (isCastlab) {
+                if (params.containsKey("userId")) {
+                    userId = params["userId"] as String;
+                }
+
+                if (params.containsKey("assetId")) {
+                    assetId = params["assetId"] as String;
+                }
+
+                if (params.containsKey("sessionId")) {
+                    sessionId = params["sessionId"] as String;
+                }
+
+                if (params.containsKey("merchant")) {
+                    merchant = params["merchant"] as String;
+                }
+
+                if (params.containsKey("authToken")) {
+                    authToken = params["authToken"] as String;
+                }
+            }
+        }
+
+
         if (params.containsKey("videoUrl")) {
             videoUrl = params["videoUrl"] as String;
         }
 
         if (params.containsKey("drmLicenseUrl")) {
             drmLicenseUrl = params["drmLicenseUrl"] as String;
+            if (isCastlab) {
+                drmLicenseUrl = CastlabsWidevineDrmCallback.DRMTODAY_PRODUCTION
+            }
         }
 
 
@@ -186,7 +217,17 @@ internal class DrmVideoPlayer(
 
 
         if (drmLicenseUrl.isNotEmpty()) {
-            val drmCallback = HttpMediaDrmCallback(drmLicenseUrl, DefaultHttpDataSource.Factory())
+            val drmCallback = if(isCastlab) CastlabsWidevineDrmCallback(
+                drmLicenseUrl,
+                 merchant,
+                 assetId,
+                null,
+                 userId,
+                 sessionId,
+                authToken,
+                 DefaultHttpDataSource.Factory()
+
+            ) else HttpMediaDrmCallback(drmLicenseUrl, DefaultHttpDataSource.Factory())
             drmSessionManager = DrmSessionManagerProvider { DefaultDrmSessionManager.Builder().build(drmCallback) }
         }
 
@@ -349,5 +390,4 @@ internal class DrmVideoPlayer(
             eventSink.success(event)
         }
     }
-
 }

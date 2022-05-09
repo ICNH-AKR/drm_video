@@ -26,6 +26,12 @@ class DrmVideoPlayer extends StatefulWidget {
     required this.onVideoControls,
     this.formatHint = "",
     this.autoPlay = true,
+    required this.userId,
+    required this.sessionId,
+    required this.merchant,
+    required this.authToken,
+    required this.isCastlab,
+    required this.assetId,
   });
 
   final String videoUrl;
@@ -33,6 +39,13 @@ class DrmVideoPlayer extends StatefulWidget {
   final String formatHint;
   final bool autoPlay;
   final Function(VideoController) onVideoControls;
+
+  final String userId;
+  final String assetId;
+  final String sessionId;
+  final String merchant;
+  final String authToken;
+  final bool isCastlab;
 
   @override
   _DrmVideoPlayerState createState() => _DrmVideoPlayerState();
@@ -45,6 +58,12 @@ class _DrmVideoPlayerState extends State<DrmVideoPlayer> {
     final Map<String, dynamic> creationParams = <String, dynamic>{
       "videoUrl": widget.videoUrl,
       "drmLicenseUrl": widget.drmLicenseUrl,
+      "userId": widget.userId,
+      // "assetId": widget.assetId,
+      "sessionId": widget.sessionId,
+      "merchant": widget.merchant,
+      // "authToken": widget.authToken,
+      "isCastlab": widget.isCastlab,
       "formatHint": widget.formatHint,
       "autoPlay": widget.autoPlay,
     };

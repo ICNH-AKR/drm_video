@@ -15,6 +15,24 @@ class _MyAppState extends State<MyApp> {
   VideoController _videoController;
   String dashUrl = "https://storage.googleapis.com/wvmedia/cenc/h264/tears/tears.mpd";
   String licenseUrl = "https://proxy.staging.widevine.com/proxy";
+  // String dashUrl =
+  //     "https://media.at2010.net/test-drm/item3/dash/00307268_47MetersDown_Feature_FEATURE_DE_169_1080_p_24_ProResHQ_TC00000000.mpd";
+  // String licenseUrl = "https://lic.drmtoday.com/license-proxy-widevine/cenc/";
+
+  final String drmTodayUrl = 'https://lic.drmtoday.com/license-proxy-widevine/cenc/';
+  final String assetId = 'dash2';
+  final String variantId = '';
+  final String merchant = 'cliq';
+  final String userId = 'rental1';
+  final String sessionId = 'p0';
+  final String authToken =
+      'eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJpYXQiOjE2NTA1NTY3NTMsInJvbGVzIjpbXSwiaWQiOiJmMTQ3NWJlNy00YTExLTRmZWItYjRiMi04OGM2ZmRlMzMzZTYifQ.IHZHtXU8QDVCbDuHVb4dUEhAczI6-9fTLEHrlLPFbO9zvqa7RhzLU4jbOeZwik_PMcLZsw32-aayxT3baJn_VwBbX8UxiMJhy85ObEZ21Fj5ZSZZikz8EW6mw98U-HghKThuoJKe7DaSus9qafL4IXAD6XGsP6Fcclo44haO90e9cfqxSj9V4JaiWOQ-ksq3Orn2cxwUKyL72W8wqnsolW_WTzddvQUNL8rtjtwyxPdCzuVoWPwXy21mhb4pCqjjEfed4n2szxu0BGVH0hMqVtXFSVGA72ikrTlOxjnjGDF5G4LkxE7fAeEoZlsUoIq2AS47qxufJNfba7ichIPPWtV0Qps3bKn45ffPr1Y8Rl1eW_rpmBv3WYQundfYqECWfSDP4D4XbbyzgEa6p6zytaz4VkuQOhKvNbG4EFv1HhaFrty-TU7208HwPMpTvXJx6NiG9P9Zynadk14Gfd7HllejlIFXBO9kGtUu2UU1P_jSLG6EhOjc2ZHVZLTu1jq6YlETdGwrxD-xOooDXc4t2ypMDw96nzsnPjVHPSSO5r3O3zc1MpdnDOJyKFRU-i4p8EODG7y_NHmz0V2ilo5gsZYsj2WIisCsLN3ICD9Ecl0RVJtSxCyCIDcqoFsqufYOzJKIDPx0no_9UgW9lxO2YxsTAbeiVzvNCAgnXljNpX4';
+  final bool useCastlab = false;
+
+  @override
+  void initState() {
+    super.initState();
+  }
 
   @override
   void dispose() {
@@ -50,6 +68,12 @@ class _MyAppState extends State<MyApp> {
                           });
                           setState(() {});
                         },
+                        assetId: assetId,
+                        authToken: authToken,
+                        isCastlab: useCastlab,
+                        merchant: merchant,
+                        sessionId: sessionId,
+                        userId: userId,
                       ),
                     ),
                     if (_videoController != null) _ControlsOverlay(controller: _videoController),
